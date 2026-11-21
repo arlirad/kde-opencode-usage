@@ -31,7 +31,7 @@ A KDE Plasma 6 plasmoid that shows OpenCode Go usage for the rolling 5-hour, wee
 
 3. Open the widget configuration, enter the API key, and apply the settings. From an unconfigured widget, use the **Open Settings** button in the full view, or right-click the widget and choose **Configure OpenCode Usage**.
 
-4. The widget requests usage immediately after a key is applied and then once per polling interval.
+4. The widget requests usage immediately after a key is applied and then once per polling interval. The centered action row at the bottom opens the OpenCode Go console or refreshes usage manually.
 
 ## Configuration
 
@@ -82,7 +82,7 @@ The endpoint is official, but the current response contract and endpoint availab
 
 - The provider sends one request at a time. A second manual refresh or timer tick is ignored while a request is in flight.
 - Each request has a 15-second QML timer watchdog. The Qt 6.12 QML `XMLHttpRequest` exposes only `onreadystatechange`, so the watchdog aborts the request, clears the in-flight slot, and reports a timeout through the normal failure path. No XHR timeout or error properties are used. Network errors, timeouts, invalid JSON, and HTTP errors produce a concise error state.
-- The automatic interval is 5 minutes by default. The full view has a stock **Refresh** button at the bottom of the content, below the usage rows and any setup or error text; the button fills the available width. While the last request failed, the same button is labeled **Retry**.
+- The automatic interval is 5 minutes by default. The full view has a centered action row at the bottom, below the usage rows and any setup or error text. **Open OpenCode Go** on the left opens `https://opencode.ai/console/go` in the external browser; **Refresh** on the right requests usage immediately. While the last request failed, the right button is labeled **Retry**. Both are normal-width stock buttons and do not fill the row.
 - `401` and `403`: the API key is rejected. `429`: too many requests. `5xx`: server error. A status outside those groups is reported as a generic HTTP failure. Response bodies and keys are never shown or logged.
 - With no key, the provider stays in setup state, the full view shows setup text plus **Open Settings**, and the three rows render placeholders (`—`) with empty progress bars. The compact view shows **Setup**. No usage values are fabricated.
 - After a successful response, a later failure keeps the last live rows and reports the update error in the tooltip, error label, and summary. The widget never substitutes fabricated values for live data.
@@ -97,7 +97,7 @@ contents/config/main.xml            KConfigXT entries: apiKey, pollIntervalMinut
 contents/config/config.qml          Plasma configuration model
 contents/ui/configGeneral.qml       Stock Plasma/Kirigami settings page
 contents/ui/main.qml                PlasmoidItem entry point and configuration wiring
-contents/ui/FullRepresentation.qml  desktop view, setup and error states, bottom refresh button
+contents/ui/FullRepresentation.qml  desktop view, setup and error states, centered bottom action row
 contents/ui/CompactRepresentation.qml panel view and accessible summary
 contents/ui/UsageRow.qml            title, percent, reset, and stock progress bar
 contents/ui/UsageProvider.qml       state, polling, formatting, and row model
@@ -119,7 +119,7 @@ make test-ui
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml contents/ui/*.qml contents/config/*.qml tests/*.qml
 ```
 
-`make verify` checks package structure, the endpoint and response mapping, config entries, setup and error states, stock-control usage, and README coverage. `make test-ui` runs all `tests/tst_*.qml` files offscreen with the KDE platform theme. The QML tests cover normalized response mapping, ISO and numeric reset timestamps, missing and malformed fields, percent clamping, API/error messages, key gating, successful and failed responses, one-in-flight behavior, watchdog timeout recovery, late callbacks, setup placeholders, and the full-view refresh layout at narrow and normal widths.
+`make verify` checks package structure, the endpoint and response mapping, config entries, setup and error states, stock-control usage, and README coverage. `make test-ui` runs all `tests/tst_*.qml` files offscreen with the KDE platform theme. The QML tests cover normalized response mapping, ISO and numeric reset timestamps, missing and malformed fields, percent clamping, API/error messages, key gating, successful and failed responses, one-in-flight behavior, watchdog timeout recovery, late callbacks, setup placeholders, and the centered bottom action row at narrow and normal widths.
 
 There is no live API test. Tests must not use a real key and must not contact the production endpoint. `qmllint` may report `missing-property` warnings for `Plasmoid.configuration.*`; those properties come from the KConfigXT file at runtime.
 

@@ -49,37 +49,61 @@ TestCase {
         }), testCase.nowMs)
     }
 
-    function test_refreshButtonFillsWidthBelowRows() {
+    function test_actionRowIsCenteredBelowRows() {
         loadLiveData()
         full.width = Kirigami.Units.gridUnit * 20
         waitForRendering(full)
 
         const layout = findChild(full, "contentLayout")
-        const button = findChild(full, "refreshButton")
+        const row = findChild(full, "actionRow")
+        const open = findChild(full, "openGoButton")
+        const refresh = findChild(full, "refreshButton")
         const rows = findChild(full, "rowsRepeater")
 
         compare(rows.count, 3)
-        compare(button.visible, true)
-        compare(button.text, "Refresh")
-        compare(Math.round(button.width), Math.round(layout.width))
+        compare(row.visible, true)
+        compare(open.visible, true)
+        compare(refresh.visible, true)
+        compare(open.text, "Open OpenCode Go")
+        compare(refresh.text, "Refresh")
+        compare(full.goConsoleUrl, "https://opencode.ai/console/go")
+
+        verify(open.x < refresh.x)
+        verify(open.x + open.width <= refresh.x)
+        compare(open.y, refresh.y)
+
+        compare(Math.round(open.width), Math.round(open.implicitWidth))
+        compare(Math.round(refresh.width), Math.round(refresh.implicitWidth))
+        verify(row.width < layout.width)
+        verify(Math.abs((row.x + row.width / 2) - layout.width / 2) < 1)
 
         const lastRow = rows.itemAt(2)
-        verify(button.y >= lastRow.y + lastRow.height)
+        verify(row.y >= lastRow.y + lastRow.height)
     }
 
-    function test_narrowWidthKeepsRowLabelsAndButtonText() {
+    function test_narrowWidthKeepsActionRowInsideAndSeparated() {
         loadLiveData()
         full.width = Kirigami.Units.gridUnit * 14
         waitForRendering(full)
 
         const layout = findChild(full, "contentLayout")
-        const button = findChild(full, "refreshButton")
+        const row = findChild(full, "actionRow")
+        const open = findChild(full, "openGoButton")
+        const refresh = findChild(full, "refreshButton")
         const rows = findChild(full, "rowsRepeater")
 
-        compare(button.visible, true)
-        compare(button.text, "Refresh")
-        compare(Math.round(button.width), Math.round(layout.width))
-        verify(button.width > 0)
+        compare(open.text, "Open OpenCode Go")
+        compare(refresh.text, "Refresh")
+        verify(row.visible)
+
+        verify(row.x >= 0)
+        verify(row.x + row.width <= layout.width + 0.5)
+        verify(open.x >= 0)
+        verify(open.x < refresh.x)
+        verify(open.x + open.width <= refresh.x)
+        verify(refresh.x + refresh.width <= layout.width + 0.5)
+        verify(open.width > 0)
+        verify(refresh.width > 0)
 
         compare(rows.itemAt(0).title, "5-hour window")
         compare(rows.itemAt(0).percentText, "40% used")
@@ -99,26 +123,29 @@ TestCase {
         full.width = Kirigami.Units.gridUnit * 20
         waitForRendering(full)
 
-        const button = findChild(full, "refreshButton")
+        const row = findChild(full, "actionRow")
+        const refresh = findChild(full, "refreshButton")
+        const open = findChild(full, "openGoButton")
         const errorLabel = findChild(full, "errorLabel")
         const rows = findChild(full, "rowsRepeater")
 
-        compare(button.text, "Retry")
+        compare(refresh.text, "Retry")
+        compare(open.text, "Open OpenCode Go")
         compare(errorLabel.visible, true)
-        verify(button.y >= errorLabel.y + errorLabel.height)
-        verify(button.y >= rows.itemAt(2).y + rows.itemAt(2).height)
+        verify(row.y >= errorLabel.y + errorLabel.height)
+        verify(row.y >= rows.itemAt(2).y + rows.itemAt(2).height)
     }
 
-    function test_setupShowsPlaceholdersWithoutRefresh() {
+    function test_setupShowsPlaceholdersWithoutActionRow() {
         full.width = Kirigami.Units.gridUnit * 20
         waitForRendering(full)
 
-        const button = findChild(full, "refreshButton")
+        const row = findChild(full, "actionRow")
         const setupLabel = findChild(full, "setupLabel")
         const rows = findChild(full, "rowsRepeater")
 
         compare(testProvider.state, "setup")
-        compare(button.visible, false)
+        compare(row.visible, false)
         compare(setupLabel.visible, true)
         verify(setupLabel.text.indexOf("API key") >= 0)
 

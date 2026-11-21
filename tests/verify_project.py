@@ -157,8 +157,15 @@ def main():
     checks.append(("error text is visible without secrets", "provider.errorText" in full_text, ""))
     checks.append(("setup state is explicit", 'root.provider.state === "setup"' in full_text and "OpenCode Go API key is not configured" in full_text, ""))
     checks.append(("demo wording is removed from the UI", "demo" not in full_text.lower() and "sample" not in full_text.lower() and "demo" not in compact_text.lower() and "sample" not in compact_text.lower(), ""))
-    checks.append(("refresh button is declared after all rows", 'objectName: "refreshButton"' in full_text and full_text.index('objectName: "refreshButton"') > full_text.index('objectName: "rowsRepeater"'), ""))
-    checks.append(("refresh button fills available width", full_text.rindex("Layout.fillWidth: true") > full_text.index('objectName: "refreshButton"'), ""))
+
+    action_section = full_text[full_text.index('objectName: "actionRow"'):]
+    checks.append(("action row follows rows and error content", full_text.index('objectName: "actionRow"') > full_text.index('objectName: "rowsRepeater"') and full_text.index('objectName: "actionRow"') > full_text.index('objectName: "errorLabel"'), ""))
+    checks.append(("action row contains two stock Plasma buttons", action_section.count("PlasmaComponents3.Button") == 2, ""))
+    checks.append(("action row is centered", "Layout.alignment: Qt.AlignHCenter" in action_section, ""))
+    checks.append(("action buttons keep natural widths", "Layout.fillWidth" not in action_section, ""))
+    checks.append(("Open OpenCode Go is left of refresh/retry", 'objectName: "openGoButton"' in action_section and 'objectName: "refreshButton"' in action_section and full_text.index('objectName: "openGoButton"') < full_text.index('objectName: "refreshButton"'), ""))
+    checks.append(("Open OpenCode Go uses the official console URL", "https://opencode.ai/console/go" in full_text and "Qt.openUrlExternally(root.goConsoleUrl)" in full_text, ""))
+    checks.append(("action buttons have accessible names and tooltips", action_section.count("Accessible.name") == 2 and action_section.count("PlasmaComponents3.ToolTip") == 2, ""))
     checks.append(("rows use absolute reset countdowns", "formatResetAt(row.resetsAt)" in full_text, ""))
     checks.append(("compact view reports setup and loading", 'root.provider.state === "setup"' in compact_text and '"loading" ? "…"' in compact_text, ""))
     checks.append(("compact accessible description reports state", "Accessible.description: root.provider.summaryText()" in compact_text, ""))
@@ -193,6 +200,8 @@ def main():
         "user home",
         "Rotate",
         "Refresh",
+        "Open OpenCode Go",
+        "https://opencode.ai/console/go",
         "error",
         "placeholder",
         "fabricated",
@@ -221,6 +230,7 @@ def main():
     checks.append(("README marks the endpoint official but changeable", "official" in readme_text.lower() and "can change" in readme_text.lower(), ""))
     checks.append(("README documents that no live API test is used", "live api" in readme_text.lower() and "not" in readme_text.lower(), ""))
     checks.append(("README documents setup placeholders and no fabricated data", "placeholder" in readme_text.lower() and "fabricated" in readme_text.lower(), ""))
+    checks.append(("README documents the action row and external console link", "open opencode go" in readme_text.lower() and "centered" in readme_text.lower(), ""))
     checks.append(("README has no demo or sample-data option", "demo" not in readme_text.lower() and "showdemodata" not in readme_text.lower() and "sample data" not in readme_text.lower(), ""))
 
     test_api_text = texts["tests/tst_usage_api.qml"]
@@ -236,8 +246,9 @@ def main():
     checks.append(("provider tests cover key state", "apiKey" in test_provider_text and 'compare(provider.state, "setup")' in test_provider_text, ""))
     checks.append(("provider tests cover response and failure handling", "applyResponse(200" in test_provider_text and "applyResponse(500" in test_provider_text, ""))
     checks.append(("provider tests assert setup placeholders and no sample values", "test_setupStateWithoutKey" in test_provider_text and "formatUsagePercentOrPlaceholder" in test_provider_text and "compare(row.usedPercent, 0)" in test_provider_text, ""))
-    checks.append(("layout tests cover normal and narrow widths", "test_refreshButtonFillsWidthBelowRows" in test_full_text and "test_narrowWidthKeepsRowLabelsAndButtonText" in test_full_text and "Kirigami.Units.gridUnit * 14" in test_full_text, ""))
-    checks.append(("layout tests verify bottom retry placement", "test_retryButtonFollowsErrorContent" in test_full_text and "button.y >= errorLabel.y + errorLabel.height" in test_full_text, ""))
+    checks.append(("layout tests cover normal and narrow widths", "test_actionRowIsCenteredBelowRows" in test_full_text and "test_narrowWidthKeepsActionRowInsideAndSeparated" in test_full_text and "Kirigami.Units.gridUnit * 14" in test_full_text, ""))
+    checks.append(("layout tests verify bottom retry placement", "test_retryButtonFollowsErrorContent" in test_full_text and "row.y >= errorLabel.y + errorLabel.height" in test_full_text, ""))
+    checks.append(("layout tests verify action order and URL", "full.goConsoleUrl" in test_full_text and "open.x < refresh.x" in test_full_text and "Open OpenCode Go" in test_full_text, ""))
     checks.append(("test target discovers all tests", "-input tests" in texts["Makefile"], ""))
 
     failures = [check for check in checks if not check[1]]

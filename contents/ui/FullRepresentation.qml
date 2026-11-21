@@ -10,6 +10,8 @@ Item {
 
     required property UsageProvider provider
 
+    readonly property string goConsoleUrl: "https://opencode.ai/console/go"
+
     signal configureRequested()
 
     implicitWidth: Kirigami.Units.gridUnit * 20
@@ -82,15 +84,42 @@ Item {
             }
         }
 
-        PlasmaComponents3.Button {
-            objectName: "refreshButton"
+        RowLayout {
+            id: actionRow
 
-            Layout.fillWidth: true
+            objectName: "actionRow"
+
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Kirigami.Units.smallSpacing
             visible: root.provider.hasKey
-            text: root.provider.state === "error" ? "Retry" : "Refresh"
-            icon.name: "view-refresh"
-            enabled: !root.provider.loading
-            onClicked: root.provider.refresh()
+
+            PlasmaComponents3.Button {
+                objectName: "openGoButton"
+
+                text: "Open OpenCode Go"
+                onClicked: Qt.openUrlExternally(root.goConsoleUrl)
+
+                Accessible.name: "Open OpenCode Go console"
+
+                PlasmaComponents3.ToolTip {
+                    text: "Open the OpenCode Go console in your browser"
+                }
+            }
+
+            PlasmaComponents3.Button {
+                objectName: "refreshButton"
+
+                text: root.provider.state === "error" ? "Retry" : "Refresh"
+                icon.name: "view-refresh"
+                enabled: !root.provider.loading
+                onClicked: root.provider.refresh()
+
+                Accessible.name: root.provider.state === "error" ? "Retry usage request" : "Refresh usage"
+
+                PlasmaComponents3.ToolTip {
+                    text: root.provider.state === "error" ? "Retry the usage request" : "Refresh usage now"
+                }
+            }
         }
     }
 }
