@@ -11,7 +11,7 @@ TestCase {
     height: 120
     visible: true
 
-    readonly property var sampleProvider: UsageUi.UsageProvider {}
+    readonly property var testProvider: UsageUi.UsageProvider {}
 
     QtObject {
         id: applet
@@ -25,7 +25,7 @@ TestCase {
         width: 54
         height: 36
         visible: true
-        provider: testCase.sampleProvider
+        provider: testCase.testProvider
         plasmoidItem: applet
     }
 

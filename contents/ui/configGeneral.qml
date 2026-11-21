@@ -9,7 +9,6 @@ KCM.SimpleKCM {
 
     property alias cfg_apiKey: apiKeyField.text
     property alias cfg_pollIntervalMinutes: pollInterval.value
-    property alias cfg_showDemoData: demoCheck.checked
 
     Kirigami.FormLayout {
         PlasmaComponents3.TextField {
@@ -40,12 +39,6 @@ KCM.SimpleKCM {
                 const parsed = parseInt(text, 10)
                 return isNaN(parsed) ? 5 : Math.max(1, Math.min(1440, parsed))
             }
-        }
-
-        PlasmaComponents3.CheckBox {
-            id: demoCheck
-
-            text: "Show sample data when no API key is configured"
         }
 
         PlasmaComponents3.Label {

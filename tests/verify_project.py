@@ -23,6 +23,7 @@ REQUIRED_FILES = [
     "tests/tst_usage_api.qml",
     "tests/tst_usage_client.qml",
     "tests/tst_usage_provider.qml",
+    "tests/tst_full_representation.qml",
 ]
 
 CHECKED_FILES = [
@@ -38,7 +39,6 @@ CHECKED_FILES = [
 EXPECTED_WINDOW_ORDER = ["five_hour", "weekly", "monthly"]
 EXPECTED_LABELS = ["5-hour window", "Weekly", "Monthly"]
 ENDPOINT = "https://opencode.ai/zen/go/v1/usage"
-SAMPLE_VALUES = [(10, 14820), (4, 133200), (2, 2588400)]
 
 
 def read(path):
@@ -105,10 +105,9 @@ def main():
     checks.append(("client allows request injection for tests", "requestFactory" in client_text, ""))
     checks.append(("client does not log", "console." not in all_sources, ""))
 
-    definitions_text = api_text.split("var SAMPLE_WINDOWS")[0]
-    window_order = re.findall(r'windowId:\s*"([^"]+)"', definitions_text)
-    labels = re.findall(r'label:\s*"([^"]+)"', definitions_text)
-    response_keys = re.findall(r'responseKey:\s*"([^"]+)"', definitions_text)
+    window_order = re.findall(r'windowId:\s*"([^"]+)"', api_text)
+    labels = re.findall(r'label:\s*"([^"]+)"', api_text)
+    response_keys = re.findall(r'responseKey:\s*"([^"]+)"', api_text)
     checks.append(("provider defines three windows in order", window_order == EXPECTED_WINDOW_ORDER, str(window_order)))
     checks.append(("provider keeps the documented labels", labels == EXPECTED_LABELS, str(labels)))
     checks.append(("response keys map to the three windows", response_keys == ["rolling", "weekly", "monthly"], str(response_keys)))
@@ -119,38 +118,35 @@ def main():
     checks.append(("auth errors have a concise message", "401" in api_text and "key rejected" in api_text, ""))
     checks.append(("rate limiting has a concise message", "429" in api_text and "Too many requests" in api_text, ""))
     checks.append(("server errors have a concise message", "Server error (HTTP" in api_text, ""))
-    checks.append(("sample data remains documented values", all(f"usedPercent: {percent}" in api_text and f"resetsInSeconds: {seconds}" in api_text for percent, seconds in SAMPLE_VALUES), ""))
+    checks.append(("no fabricated sample data remains", "SAMPLE_WINDOWS" not in api_text and "sampleWindows" not in api_text and "resetsInSeconds: 14820" not in api_text, ""))
 
     checks.append(("provider stores the API key as config input", 'property string apiKey: ""' in provider_text, ""))
     checks.append(("polling defaults to five minutes", "property int pollIntervalMinutes: 5" in provider_text, ""))
-    checks.append(("provider has a demo mode flag", "property bool demoMode: false" in provider_text, ""))
     checks.append(("provider gates requests on a configured key", "function refresh()" in provider_text and "if (!UsageApi.hasApiKey(provider.apiKey))" in provider_text, ""))
     checks.append(("provider starts requests through the client", "provider.client.fetch(provider.apiKey)" in provider_text, ""))
     checks.append(("provider maps responses", "UsageApi.normalizeResponse" in provider_text, ""))
     checks.append(("provider maps HTTP errors", "UsageApi.errorForStatus" in provider_text, ""))
-    checks.append(("provider exposes loading, ready, setup, demo, and error states", all(state in provider_text for state in ('"setup"', '"demo"', '"loading"', '"ready"', '"error"')), ""))
+    checks.append(("provider exposes setup, loading, ready, and error states", all(state in provider_text for state in ('"setup"', '"loading"', '"ready"', '"error"')), ""))
     checks.append(("provider summarizes state without secrets", "function summaryText" in provider_text and "Update failed" in provider_text, ""))
-    checks.append(("demo data requires both demo mode and no key", "!UsageApi.hasApiKey(provider.apiKey) && provider.demoMode" in provider_text, ""))
-    checks.append(("demo data is never the live provider state", 'readonly property bool isSampleData: provider.state === "demo"' in provider_text, ""))
+    checks.append(("provider has no demo mode or sample state", "demoMode" not in provider_text and "isSampleData" not in provider_text and '"demo"' not in provider_text, ""))
     checks.append(("three placeholder rows survive setup and errors", "UsageApi.defaultEntries" in provider_text and "function resetWindows" in provider_text, ""))
-    checks.append(("no request is made for demo or setup", "function refresh()" in provider_text and provider_text.index("function refresh()") < provider_text.index("provider.client.fetch(provider.apiKey)"), ""))
+    checks.append(("setup blocks requests before fetch", "function refresh()" in provider_text and provider_text.index("function refresh()") < provider_text.index("provider.client.fetch(provider.apiKey)"), ""))
 
     checks.append(("config model exposes a category", "ConfigModel" in config_text and "ConfigCategory" in config_text, ""))
     checks.append(("config category points at the config page", 'source: "configGeneral.qml"' in config_text, ""))
     checks.append(("API key is a string config entry", '<entry name="apiKey" type="String">' in config_xml, ""))
     checks.append(("poll interval is an integer config entry", '<entry name="pollIntervalMinutes" type="Int">' in config_xml, ""))
     checks.append(("poll interval default is five minutes", re.search(r'<entry name="pollIntervalMinutes" type="Int">.*?<default>5</default>', config_xml, re.S) is not None, ""))
-    checks.append(("demo data is an opt-in boolean config entry", '<entry name="showDemoData" type="Bool">' in config_xml and '<default>false</default>' in config_xml, ""))
     checks.append(("config page aliases the API key", "property alias cfg_apiKey:" in config_ui_text, ""))
     checks.append(("config page aliases the poll interval", "property alias cfg_pollIntervalMinutes:" in config_ui_text, ""))
-    checks.append(("config page aliases the demo flag", "property alias cfg_showDemoData:" in config_ui_text, ""))
+    checks.append(("config has no demo option", "showDemoData" not in config_xml and "cfg_showDemoData" not in config_ui_text and "CheckBox" not in config_ui_text, ""))
     checks.append(("API key field is password-style", "echoMode: TextInput.Password" in config_ui_text and "PlasmaComponents3.TextField" in config_ui_text, ""))
-    checks.append(("config uses stock Plasma controls", all(token in config_ui_text for token in ("KCM.SimpleKCM", "PlasmaComponents3.SpinBox", "PlasmaComponents3.CheckBox")), ""))
+    checks.append(("config uses stock Plasma controls", all(token in config_ui_text for token in ("KCM.SimpleKCM", "PlasmaComponents3.SpinBox")), ""))
     checks.append(("config warns about local key storage", "user home" in config_ui_text and "Rotate the key" in config_ui_text, ""))
 
     checks.append(("main binds the key from Plasma configuration", "apiKey: Plasmoid.configuration.apiKey" in main_text, ""))
     checks.append(("main binds the poll interval", "pollIntervalMinutes: Plasmoid.configuration.pollIntervalMinutes" in main_text, ""))
-    checks.append(("main binds the demo flag", "demoMode: Plasmoid.configuration.showDemoData" in main_text, ""))
+    checks.append(("main has no demo wiring", "demoMode" not in main_text and "showDemoData" not in main_text, ""))
     checks.append(("main refreshes when configuration changes", "root.usageProvider.refresh()" in main_text, ""))
     checks.append(("main opens the widget configuration", 'Plasmoid.internalAction("configure")' in main_text and "action.trigger()" in main_text, ""))
     checks.append(("tooltip reports provider state", "toolTipSubText: root.usageProvider.summaryText()" in main_text, ""))
@@ -159,7 +155,10 @@ def main():
     checks.append(("setup state includes a stock settings button", "Open Settings" in full_text and "onClicked: root.configureRequested()" in full_text, ""))
     checks.append(("refresh and retry use a stock button", 'root.provider.state === "error" ? "Retry" : "Refresh"' in full_text and "PlasmaComponents3.Button" in full_text, ""))
     checks.append(("error text is visible without secrets", "provider.errorText" in full_text, ""))
-    checks.append(("setup and demo states are explicit", 'root.provider.state === "setup"' in full_text and 'root.provider.state === "demo"' in full_text, ""))
+    checks.append(("setup state is explicit", 'root.provider.state === "setup"' in full_text and "OpenCode Go API key is not configured" in full_text, ""))
+    checks.append(("demo wording is removed from the UI", "demo" not in full_text.lower() and "sample" not in full_text.lower() and "demo" not in compact_text.lower() and "sample" not in compact_text.lower(), ""))
+    checks.append(("refresh button is declared after all rows", 'objectName: "refreshButton"' in full_text and full_text.index('objectName: "refreshButton"') > full_text.index('objectName: "rowsRepeater"'), ""))
+    checks.append(("refresh button fills available width", full_text.rindex("Layout.fillWidth: true") > full_text.index('objectName: "refreshButton"'), ""))
     checks.append(("rows use absolute reset countdowns", "formatResetAt(row.resetsAt)" in full_text, ""))
     checks.append(("compact view reports setup and loading", 'root.provider.state === "setup"' in compact_text and '"loading" ? "…"' in compact_text, ""))
     checks.append(("compact accessible description reports state", "Accessible.description: root.provider.summaryText()" in compact_text, ""))
@@ -195,7 +194,8 @@ def main():
         "Rotate",
         "Refresh",
         "error",
-        "sample",
+        "placeholder",
+        "fabricated",
         "settings",
         "watchdog",
         "onreadystatechange",
@@ -220,11 +220,13 @@ def main():
     checks.append(("README follows the direct project structure", not missing_sections, ", ".join(missing_sections)))
     checks.append(("README marks the endpoint official but changeable", "official" in readme_text.lower() and "can change" in readme_text.lower(), ""))
     checks.append(("README documents that no live API test is used", "live api" in readme_text.lower() and "not" in readme_text.lower(), ""))
-    checks.append(("README documents demo data is not live data", "sample" in readme_text.lower() and "demo" in readme_text.lower(), ""))
+    checks.append(("README documents setup placeholders and no fabricated data", "placeholder" in readme_text.lower() and "fabricated" in readme_text.lower(), ""))
+    checks.append(("README has no demo or sample-data option", "demo" not in readme_text.lower() and "showdemodata" not in readme_text.lower() and "sample data" not in readme_text.lower(), ""))
 
     test_api_text = texts["tests/tst_usage_api.qml"]
     test_client_text = texts["tests/tst_usage_client.qml"]
     test_provider_text = texts["tests/tst_usage_provider.qml"]
+    test_full_text = texts["tests/tst_full_representation.qml"]
     checks.append(("API tests cover mapping and clamping", "normalizeResponse" in test_api_text and "clampPercent" in test_api_text, ""))
     checks.append(("API tests cover ISO resets and malformed fields", "resetsAt" in test_api_text and "missingAndMalformed" in test_api_text, ""))
     checks.append(("API tests cover HTTP errors", "errorForStatus(401)" in test_api_text and "errorForStatus(429)" in test_api_text, ""))
@@ -233,7 +235,9 @@ def main():
     checks.append(("client tests avoid a live request", "requestFactory" in test_client_text and "test-key-not-real" in test_client_text, ""))
     checks.append(("provider tests cover key state", "apiKey" in test_provider_text and 'compare(provider.state, "setup")' in test_provider_text, ""))
     checks.append(("provider tests cover response and failure handling", "applyResponse(200" in test_provider_text and "applyResponse(500" in test_provider_text, ""))
-    checks.append(("provider tests cover demo gating", "demoMode" in test_provider_text and "isSampleData" in test_provider_text, ""))
+    checks.append(("provider tests assert setup placeholders and no sample values", "test_setupStateWithoutKey" in test_provider_text and "formatUsagePercentOrPlaceholder" in test_provider_text and "compare(row.usedPercent, 0)" in test_provider_text, ""))
+    checks.append(("layout tests cover normal and narrow widths", "test_refreshButtonFillsWidthBelowRows" in test_full_text and "test_narrowWidthKeepsRowLabelsAndButtonText" in test_full_text and "Kirigami.Units.gridUnit * 14" in test_full_text, ""))
+    checks.append(("layout tests verify bottom retry placement", "test_retryButtonFollowsErrorContent" in test_full_text and "button.y >= errorLabel.y + errorLabel.height" in test_full_text, ""))
     checks.append(("test target discovers all tests", "-input tests" in texts["Makefile"], ""))
 
     failures = [check for check in checks if not check[1]]

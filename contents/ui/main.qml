@@ -10,7 +10,6 @@ PlasmoidItem {
     readonly property UsageProvider usageProvider: UsageProvider {
         apiKey: Plasmoid.configuration.apiKey
         pollIntervalMinutes: Plasmoid.configuration.pollIntervalMinutes
-        demoMode: Plasmoid.configuration.showDemoData
     }
 
     preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Planar ? fullRepresentation : null
@@ -34,10 +33,6 @@ PlasmoidItem {
         target: root.usageProvider
 
         function onApiKeyChanged() {
-            root.usageProvider.refresh()
-        }
-
-        function onDemoModeChanged() {
             root.usageProvider.refresh()
         }
     }

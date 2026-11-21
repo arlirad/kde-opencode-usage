@@ -9,12 +9,6 @@ var WINDOW_DEFINITIONS = [
     { windowId: "monthly", label: "Monthly", responseKey: "monthly" }
 ]
 
-var SAMPLE_WINDOWS = [
-    { windowId: "five_hour", label: "5-hour window", usedPercent: 10, resetsInSeconds: 14820 },
-    { windowId: "weekly", label: "Weekly", usedPercent: 4, resetsInSeconds: 133200 },
-    { windowId: "monthly", label: "Monthly", usedPercent: 2, resetsInSeconds: 2588400 }
-]
-
 function windowDefinitions() {
     return WINDOW_DEFINITIONS.map(function (definition) {
         return {
@@ -32,13 +26,6 @@ function defaultEntries(nowMs) {
             windowId: definition.windowId,
             label: definition.label
         }, now)
-    })
-}
-
-function sampleWindows(nowMs) {
-    var now = nowMs === undefined ? Date.now() : Number(nowMs)
-    return SAMPLE_WINDOWS.map(function (sample) {
-        return normalizeEntry(sample, now)
     })
 }
 

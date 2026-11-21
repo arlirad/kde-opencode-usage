@@ -14,9 +14,5 @@
       <label>Minutes between automatic usage refreshes. Zero or negative values are treated as one minute.</label>
       <default>5</default>
     </entry>
-    <entry name="showDemoData" type="Bool">
-      <label>Show sample usage when no API key is configured.</label>
-      <default>false</default>
-    </entry>
   </group>
 </kcfg>

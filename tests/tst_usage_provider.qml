@@ -16,7 +16,6 @@ TestCase {
 
     function cleanup() {
         provider.apiKey = ""
-        provider.demoMode = false
         provider.client.abort()
         provider.resetWindows()
         provider.errorText = ""
@@ -32,8 +31,17 @@ TestCase {
         compare(provider.windows.get(0).label, "5-hour window")
         compare(provider.windows.get(1).label, "Weekly")
         compare(provider.windows.get(2).label, "Monthly")
-        compare(provider.formatUsagePercentOrPlaceholder(0), "—")
-        verify(provider.summaryText().indexOf("API key") >= 0)
+
+        for (let index = 0; index < provider.windows.count; ++index) {
+            const row = provider.windows.get(index)
+            compare(row.usedPercent, 0)
+            compare(row.resetsAt, 0)
+            compare(provider.formatUsagePercentOrPlaceholder(row.usedPercent), "—")
+            compare(provider.formatResetAt(row.resetsAt), "—")
+        }
+
+        compare(provider.summaryText(), "OpenCode Go API key not configured. Open widget settings.")
+        compare(provider.summaryText().indexOf("%"), -1)
 
         provider.refresh()
         compare(provider.loading, false)
@@ -63,7 +71,6 @@ TestCase {
 
         compare(provider.state, "ready")
         compare(provider.hasData, true)
-        compare(provider.isSampleData, false)
         compare(provider.windows.count, 3)
         compare(provider.windows.get(0).windowId, "five_hour")
         compare(provider.windows.get(0).usedPercent, 12.5)
@@ -116,6 +123,23 @@ TestCase {
         verify(provider.errorText.indexOf("timed out") >= 0)
     }
 
+    function test_serverErrorBeforeDataKeepsPlaceholders() {
+        provider.apiKey = "test-key-not-real"
+        provider.applyResponse(500, "", testCase.nowMs)
+
+        compare(provider.state, "error")
+        compare(provider.hasData, false)
+        compare(provider.windows.count, 3)
+        verify(provider.errorText.indexOf("Server error") >= 0)
+        verify(provider.summaryText().indexOf("Server error") >= 0)
+        compare(provider.summaryText().indexOf("%"), -1)
+
+        for (let index = 0; index < provider.windows.count; ++index) {
+            compare(provider.windows.get(index).usedPercent, 0)
+            compare(provider.windows.get(index).resetsAt, 0)
+        }
+    }
+
     function test_pollIntervalIsConfigurable() {
         provider.pollIntervalMinutes = 7
         compare(provider.pollTimer.interval, 420000)
@@ -132,41 +156,5 @@ TestCase {
         compare(provider.formatResetAt(testCase.nowMs + 3600000), "Resets in 30m")
 
         compare(provider.formatResetAt(0), "—")
-    }
-
-    function test_demoModeIsOnlyUsedWithoutKey() {
-        provider.demoMode = true
-
-        compare(provider.state, "demo")
-        compare(provider.isSampleData, true)
-        compare(provider.hasData, true)
-        compare(provider.windows.count, 3)
-        compare(provider.windows.get(0).usedPercent, 10)
-        compare(provider.windows.get(1).usedPercent, 4)
-        compare(provider.windows.get(2).usedPercent, 2)
-        verify(provider.summaryText().indexOf("Sample data") >= 0)
-
-        provider.apiKey = "test-key-not-real"
-
-        compare(provider.state, "loading")
-        compare(provider.isSampleData, false)
-        compare(provider.hasData, false)
-        compare(provider.windows.get(0).usedPercent, 0)
-        verify(provider.summaryText().indexOf("Sample data") < 0)
-    }
-
-    function test_failureNeverRestoresSampleData() {
-        provider.demoMode = true
-        compare(provider.isSampleData, true)
-
-        provider.apiKey = "test-key-not-real"
-        provider.applyResponse(500, "", testCase.nowMs)
-
-        compare(provider.state, "error")
-        compare(provider.isSampleData, false)
-        compare(provider.hasData, false)
-        compare(provider.windows.get(0).usedPercent, 0)
-        compare(provider.windows.get(2).usedPercent, 0)
-        verify(provider.errorText.indexOf("Server error") >= 0)
     }
 }

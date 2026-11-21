@@ -6,7 +6,6 @@ QtObject {
 
     property string apiKey: ""
     property int pollIntervalMinutes: 5
-    property bool demoMode: false
     property UsageClient client: UsageClient {}
     property double nowMs: Date.now()
     property string errorText: ""
@@ -16,14 +15,10 @@ QtObject {
     readonly property bool hasKey: UsageApi.hasApiKey(provider.apiKey)
     readonly property bool loading: provider._loading
     readonly property bool hasData: provider._hasData
-    readonly property bool isSampleData: provider.state === "demo"
 
     readonly property string state: {
         const configured = UsageApi.hasApiKey(provider.apiKey)
 
-        if (provider.demoMode && !configured) {
-            return "demo"
-        }
         if (!configured) {
             return "setup"
         }
@@ -49,29 +44,9 @@ QtObject {
         provider._loading = false
         provider.errorText = ""
         provider.resetWindows()
-        if (!UsageApi.hasApiKey(provider.apiKey) && provider.demoMode) {
-            provider.applySampleData()
-        }
     }
 
-    onDemoModeChanged: {
-        provider.client.abort()
-        provider._loading = false
-        provider.errorText = ""
-        if (!UsageApi.hasApiKey(provider.apiKey)) {
-            provider.resetWindows()
-            if (provider.demoMode) {
-                provider.applySampleData()
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        provider.resetWindows()
-        if (provider.demoMode && !UsageApi.hasApiKey(provider.apiKey)) {
-            provider.applySampleData()
-        }
-    }
+    Component.onCompleted: provider.resetWindows()
 
     function refresh() {
         if (!UsageApi.hasApiKey(provider.apiKey)) {
@@ -121,10 +96,6 @@ QtObject {
         provider._replaceWindows(UsageApi.defaultEntries(provider.nowMs), provider.nowMs)
         provider._hasData = false
         provider.lastUpdatedMs = 0
-    }
-
-    function applySampleData() {
-        provider.applyUsage(UsageApi.sampleWindows(provider.nowMs), provider.nowMs)
     }
 
     function _replaceWindows(entries, time) {
@@ -213,9 +184,6 @@ QtObject {
 
         if (state === "setup") {
             return "OpenCode Go API key not configured. Open widget settings."
-        }
-        if (state === "demo") {
-            return "Sample data. " + provider._rowsSummary()
         }
         if (state === "error") {
             return provider.hasData

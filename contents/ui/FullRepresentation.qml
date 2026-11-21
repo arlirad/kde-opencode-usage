@@ -22,27 +22,15 @@ Item {
     ColumnLayout {
         id: content
 
+        objectName: "contentLayout"
+
         anchors.fill: parent
         anchors.margins: Kirigami.Units.largeSpacing
         spacing: Kirigami.Units.smallSpacing
 
-        RowLayout {
-            Layout.fillWidth: true
-            visible: root.provider.hasKey
-
-            PlasmaComponents3.Button {
-                text: root.provider.state === "error" ? "Retry" : "Refresh"
-                icon.name: "view-refresh"
-                enabled: !root.provider.loading
-                onClicked: root.provider.refresh()
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-        }
-
         PlasmaComponents3.Label {
+            objectName: "setupLabel"
+
             Layout.fillWidth: true
             visible: root.provider.state === "setup"
             text: "OpenCode Go API key is not configured."
@@ -64,13 +52,8 @@ Item {
         }
 
         PlasmaComponents3.Label {
-            Layout.fillWidth: true
-            visible: root.provider.state === "demo"
-            text: "Showing sample data. Add an API key in the widget settings to load live usage."
-            wrapMode: Text.WordWrap
-        }
+            objectName: "errorLabel"
 
-        PlasmaComponents3.Label {
             Layout.fillWidth: true
             visible: root.provider.errorText.length > 0
             text: root.provider.errorText
@@ -78,6 +61,10 @@ Item {
         }
 
         Repeater {
+            id: rowsRepeater
+
+            objectName: "rowsRepeater"
+
             model: root.provider.windows
 
             delegate: UsageRow {
@@ -93,6 +80,17 @@ Item {
                 resetText: root.provider.formatResetAt(row.resetsAt)
                 ratio: root.provider.hasData ? root.provider.usageRatio(row.usedPercent) : 0
             }
+        }
+
+        PlasmaComponents3.Button {
+            objectName: "refreshButton"
+
+            Layout.fillWidth: true
+            visible: root.provider.hasKey
+            text: root.provider.state === "error" ? "Retry" : "Refresh"
+            icon.name: "view-refresh"
+            enabled: !root.provider.loading
+            onClicked: root.provider.refresh()
         }
     }
 }

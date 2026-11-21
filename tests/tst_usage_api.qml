@@ -130,16 +130,4 @@ TestCase {
         compare(UsageApi.hasApiKey(undefined), false)
         compare(UsageApi.hasApiKey("test-key-not-real"), true)
     }
-
-    function test_sampleDataUsesDocumentedValues() {
-        const sample = UsageApi.sampleWindows(testCase.nowMs)
-
-        compare(sample.length, 3)
-        compare(sample[0].usedPercent, 10)
-        compare(sample[0].resetsInSeconds, 14820)
-        compare(sample[1].usedPercent, 4)
-        compare(sample[1].resetsInSeconds, 133200)
-        compare(sample[2].usedPercent, 2)
-        compare(sample[2].resetsInSeconds, 2588400)
-    }
 }
