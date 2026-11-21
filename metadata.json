@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "OpenCode Usage Contributors"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Displays OpenCode Go usage for the 5-hour, weekly, and monthly windows",
+        "Icon": "speedometer",
+        "Id": "org.opencode.usage",
+        "License": "MIT",
+        "Name": "OpenCode Usage",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
