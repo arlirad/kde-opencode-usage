@@ -82,7 +82,7 @@ The endpoint is official, but the current response contract and endpoint availab
 ## Behavior and error states
 
 - The provider sends one request at a time. A second manual refresh or timer tick is ignored while a request is in flight.
-- Each request has a 15-second timeout. Network errors, timeouts, invalid JSON, and HTTP errors produce a concise error state.
+- Each request has a 15-second QML timer watchdog. The Qt 6.12 QML `XMLHttpRequest` exposes only `onreadystatechange`, so the watchdog aborts the request, clears the in-flight slot, and reports a timeout through the normal failure path. No XHR timeout or error properties are used. Network errors, timeouts, invalid JSON, and HTTP errors produce a concise error state.
 - The automatic interval is 5 minutes by default. The full view has a stock **Refresh** button; while the last request failed, the same button is labeled **Retry**.
 - `401` and `403`: the API key is rejected. `429`: too many requests. `5xx`: server error. A status outside those groups is reported as a generic HTTP failure. Response bodies and keys are never shown or logged.
 - With no key, the rows are placeholders and the full view shows setup text plus **Open Settings**. The compact view shows **Setup**.
@@ -107,6 +107,7 @@ contents/ui/UsageClient.qml         single in-flight XMLHttpRequest transport
 contents/ui/UsageApi.js             endpoint, window mapping, timestamp parsing, errors
 tests/verify_project.py             structural, contract, style, and README checks
 tests/tst_usage_api.qml             mapping, clamping, timestamp, and error tests
+tests/tst_usage_client.qml          watchdog timeout, recovery, and transport tests
 tests/tst_usage_provider.qml        config, response, failure, and demo-state tests
 tests/tst_compact_activation.qml    headless compact activation test
 ```
@@ -119,7 +120,7 @@ make test-ui
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml contents/ui/*.qml contents/config/*.qml tests/*.qml
 ```
 
-`make verify` checks package structure, the endpoint and response mapping, config entries, setup and error states, stock-control usage, and README coverage. `make test-ui` runs all `tests/tst_*.qml` files offscreen with the KDE platform theme. The QML tests cover normalized response mapping, ISO and numeric reset timestamps, missing and malformed fields, percent clamping, API/error messages, key gating, successful and failed responses, and demo-mode gating.
+`make verify` checks package structure, the endpoint and response mapping, config entries, setup and error states, stock-control usage, and README coverage. `make test-ui` runs all `tests/tst_*.qml` files offscreen with the KDE platform theme. The QML tests cover normalized response mapping, ISO and numeric reset timestamps, missing and malformed fields, percent clamping, API/error messages, key gating, successful and failed responses, one-in-flight behavior, watchdog timeout recovery, late callbacks, and demo-mode gating.
 
 There is no live API test. Tests must not use a real key and must not contact the production endpoint. `qmllint` may report `missing-property` warnings for `Plasmoid.configuration.*`; those properties come from the KConfigXT file at runtime.
 

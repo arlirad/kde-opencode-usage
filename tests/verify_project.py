@@ -21,6 +21,7 @@ REQUIRED_FILES = [
     "contents/ui/configGeneral.qml",
     "tests/tst_compact_activation.qml",
     "tests/tst_usage_api.qml",
+    "tests/tst_usage_client.qml",
     "tests/tst_usage_provider.qml",
 ]
 
@@ -94,9 +95,15 @@ def main():
     checks.append(("client sends a bearer token", 'setRequestHeader("Authorization", "Bearer "' in client_text, ""))
     checks.append(("client uses XMLHttpRequest", "new XMLHttpRequest()" in client_text, ""))
     checks.append(("client allows one in-flight request", "if (_xhr !== null)" in client_text, ""))
-    checks.append(("client has a request timeout", "xhr.timeout = UsageApi.requestTimeoutMs" in client_text, ""))
+    checks.append(("client uses a QML timer watchdog", "readonly property Timer watchdogTimer" in client_text and "interval: UsageApi.requestTimeoutMs" in client_text, ""))
+    checks.append(("client restarts the watchdog per request", "client.watchdogTimer.restart()" in client_text, ""))
+    checks.append(("client stops the watchdog on completion", "client.watchdogTimer.stop()" in client_text, ""))
+    checks.append(("client aborts timed-out requests once", "function _handleTimeout" in client_text and 'client.failed("Request timed out.")' in client_text, ""))
+    checks.append(("client invalidates the in-flight request", "client._xhr = null" in client_text and "client._xhr !== xhr" in client_text, ""))
+    checks.append(("client completes through readyState", "xhr.readyState !== XMLHttpRequest.DONE" in client_text, ""))
+    checks.append(("client does not use unsupported XHR timeout/error properties", not any(token in client_text for token in ("xhr.timeout", "xhr.ontimeout", "xhr.onerror")), ""))
+    checks.append(("client allows request injection for tests", "requestFactory" in client_text, ""))
     checks.append(("client does not log", "console." not in all_sources, ""))
-    checks.append(("client handles transport errors", "xhr.onerror" in client_text and "xhr.ontimeout" in client_text, ""))
 
     definitions_text = api_text.split("var SAMPLE_WINDOWS")[0]
     window_order = re.findall(r'windowId:\s*"([^"]+)"', definitions_text)
@@ -190,6 +197,8 @@ def main():
         "error",
         "sample",
         "settings",
+        "watchdog",
+        "onreadystatechange",
         "PlasmaComponents3",
         "system",
     ]
@@ -214,10 +223,14 @@ def main():
     checks.append(("README documents demo data is not live data", "sample" in readme_text.lower() and "demo" in readme_text.lower(), ""))
 
     test_api_text = texts["tests/tst_usage_api.qml"]
+    test_client_text = texts["tests/tst_usage_client.qml"]
     test_provider_text = texts["tests/tst_usage_provider.qml"]
     checks.append(("API tests cover mapping and clamping", "normalizeResponse" in test_api_text and "clampPercent" in test_api_text, ""))
     checks.append(("API tests cover ISO resets and malformed fields", "resetsAt" in test_api_text and "missingAndMalformed" in test_api_text, ""))
     checks.append(("API tests cover HTTP errors", "errorForStatus(401)" in test_api_text and "errorForStatus(429)" in test_api_text, ""))
+    checks.append(("client tests prove timeout recovery", "test_timeoutAbortsClearsBusyAndEmitsOnce" in test_client_text and "test_requestCanStartAfterTimeout" in test_client_text, ""))
+    checks.append(("client tests cover status zero and late callbacks", "test_statusZeroUsesFailurePath" in test_client_text and "first.onreadystatechange()" in test_client_text, ""))
+    checks.append(("client tests avoid a live request", "requestFactory" in test_client_text and "test-key-not-real" in test_client_text, ""))
     checks.append(("provider tests cover key state", "apiKey" in test_provider_text and 'compare(provider.state, "setup")' in test_provider_text, ""))
     checks.append(("provider tests cover response and failure handling", "applyResponse(200" in test_provider_text and "applyResponse(500" in test_provider_text, ""))
     checks.append(("provider tests cover demo gating", "demoMode" in test_provider_text and "isSampleData" in test_provider_text, ""))
