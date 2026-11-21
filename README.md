@@ -1,150 +1,136 @@
 # OpenCode Usage
 
-A compact KDE Plasma 6 plasmoid that shows OpenCode Go usage for the 5-hour, weekly, and monthly windows. Each row contains a usage percentage label, a reset label, and a system progress bar. The widget uses only Qt 6 and KDE Plasma/QML modules.
+A KDE Plasma 6 plasmoid that shows OpenCode Go usage for the rolling 5-hour, weekly, and monthly windows using the official usage endpoint.
 
-The current data is a static sample. No network requests, credentials, timers, or OpenCode integration are implemented yet.
+## What it is
+
+- A panel and desktop widget with three usage rows in a fixed order: 5-hour window, Weekly, Monthly.
+- A live client for `GET https://opencode.ai/zen/go/v1/usage` using the configured OpenCode Go API key.
+- A stock Plasma UI built from `PlasmaComponents3` labels, buttons, text fields, and progress bars. It does not define colors, fonts, borders, radii, opacity, card surfaces, or a custom palette; the active system theme supplies them.
+- A small provider layer: `UsageApi.js` owns parsing and normalization, `UsageClient.qml` owns the single HTTP request, and `UsageProvider.qml` owns configuration state, polling, and formatting.
+
+## What it is not
+
+- Not an official OpenCode application and not affiliated with OpenCode.
+- Not a history, billing, or quota-management tool. It displays the current response only.
+- Not a secure credential store. The API key is kept in Plasma's normal widget configuration, which is local user configuration and is not encrypted by this widget.
+- Not dependent on Python, curl, or an external helper process at runtime. The request runs in QML through `XMLHttpRequest`.
+- Not covered by a live API test. The repository tests do not use a real key or contact the endpoint.
+
+## Quick start
+
+1. Install or upgrade the package:
+
+   ```sh
+   make install
+   # or, after an initial install:
+   make upgrade
+   ```
+
+2. Add the widget from Plasma's **Add Widgets** dialog and search for **OpenCode Usage**.
+
+3. Open the widget configuration, enter the API key, and apply the settings. From an unconfigured widget, use the **Open Settings** button in the full view, or right-click the widget and choose **Configure OpenCode Usage**.
+
+4. The widget requests usage immediately after a key is applied and then once per polling interval.
+
+## Configuration
+
+The configuration page is `contents/ui/configGeneral.qml`, declared in `contents/config/config.qml` and backed by `contents/config/main.xml`.
+
+| Setting | Config key | Default | Meaning |
+| --- | --- | --- | --- |
+| OpenCode Go API key | `apiKey` | empty | Bearer token for the usage endpoint. The field uses password-style display, but storage is plain local configuration. |
+| Refresh every | `pollIntervalMinutes` | 5 | Minutes between automatic requests. Values are limited to 1 through 1440. |
+| Show sample data when no API key is configured | `showDemoData` | false | Explicit demo state. Sample rows are only used when this is enabled and no key is set. |
+
+The key is stored by Plasma in the widget's configuration under the local user home directory (typically the applet configuration file). It is not encrypted, and it may be readable by anything that can read that user's configuration. Rotate the key in OpenCode if it may have been exposed, then enter the new key here.
+
+An empty or whitespace-only key counts as unconfigured. No request is made without a key, and demo mode never overrides a configured key.
+
+## API contract
+
+Request:
+
+```http
+GET https://opencode.ai/zen/go/v1/usage
+Authorization: Bearer <api-key>
+Accept: application/json
+```
+
+Expected response shape from the current official documentation:
+
+```json
+{
+  "usage": {
+    "rolling": { "status": "ok", "percent": 10, "resetsAt": "2026-05-01T14:00:00Z" },
+    "weekly": { "status": "ok", "percent": 4, "resetsAt": "2026-05-03T12:00:00Z" },
+    "monthly": { "status": "ok", "percent": 2, "resetsAt": "2026-06-01T12:00:00Z" }
+  }
+}
+```
+
+Mapping rules:
+
+- `usage.rolling` maps to `five_hour` and the **5-hour window** row; `usage.weekly` maps to the **Weekly** row; `usage.monthly` maps to the **Monthly** row. The order is fixed.
+- `percent` is treated as 0 through 100 and clamped. Missing, non-numeric, or non-finite values become 0.
+- `resetsAt` is an absolute timestamp. ISO 8601 strings are parsed with `Date.parse`; numeric Unix seconds or milliseconds are also accepted. A past timestamp displays a zero countdown.
+- A missing or malformed window still produces its row with 0 percent and no reset time. A missing `usage` envelope, invalid JSON, or a non-object payload is an error.
+- `status` is accepted but not used for display. Only `percent` and `resetsAt` drive the rows.
+
+The endpoint is official, but the current response contract and endpoint availability can change. If the shape changes, `UsageApi.normalizeResponse` is the single place to update the mapping.
+
+## Behavior and error states
+
+- The provider sends one request at a time. A second manual refresh or timer tick is ignored while a request is in flight.
+- Each request has a 15-second timeout. Network errors, timeouts, invalid JSON, and HTTP errors produce a concise error state.
+- The automatic interval is 5 minutes by default. The full view has a stock **Refresh** button; while the last request failed, the same button is labeled **Retry**.
+- `401` and `403`: the API key is rejected. `429`: too many requests. `5xx`: server error. A status outside those groups is reported as a generic HTTP failure. Response bodies and keys are never shown or logged.
+- With no key, the rows are placeholders and the full view shows setup text plus **Open Settings**. The compact view shows **Setup**.
+- In demo mode, sample rows are explicit and the full view says they are sample data. Once a key is configured, demo mode is ignored and sample rows are never used as a live fallback.
+- After a successful response, a later failure keeps the last live rows and reports the update error in the tooltip, error label, and summary. The widget does not silently replace live data with sample data.
+- Reset labels are recomputed from the absolute `resetsAt` value against the current time, refreshed once per minute, so they count down between polls.
+- The tooltip and compact accessible description report setup, loading, ready, demo, or error state without including the key or response secrets.
 
 ## Project layout
 
 ```
-metadata.json                       Plasma/Applet package metadata
-Makefile                            verify, install, upgrade, uninstall targets
-contents/ui/main.qml                PlasmoidItem entry point
-contents/ui/FullRepresentation.qml  desktop widget layout
-contents/ui/CompactRepresentation.qml panel layout
-contents/ui/UsageRow.qml            system-styled title/percent/reset/progress row
-contents/ui/UsageProvider.qml       isolated data provider and formatting
-tests/verify_project.py             project, sample-label, and system-style checks
-tests/tst_compact_activation.qml    headless compact click/keyboard activation test
+metadata.json                       Plasma/Applet metadata; package id org.opencode.usage
+contents/config/main.xml            KConfigXT entries: apiKey, pollIntervalMinutes, showDemoData
+contents/config/config.qml          Plasma configuration model
+contents/ui/configGeneral.qml       Stock Plasma/Kirigami settings page
+contents/ui/main.qml                PlasmoidItem entry point and configuration wiring
+contents/ui/FullRepresentation.qml  desktop view, setup and error states, refresh button
+contents/ui/CompactRepresentation.qml panel view and accessible summary
+contents/ui/UsageRow.qml            title, percent, reset, and stock progress bar
+contents/ui/UsageProvider.qml       state, polling, formatting, and row model
+contents/ui/UsageClient.qml         single in-flight XMLHttpRequest transport
+contents/ui/UsageApi.js             endpoint, window mapping, timestamp parsing, errors
+tests/verify_project.py             structural, contract, style, and README checks
+tests/tst_usage_api.qml             mapping, clamping, timestamp, and error tests
+tests/tst_usage_provider.qml        config, response, failure, and demo-state tests
+tests/tst_compact_activation.qml    headless compact activation test
 ```
 
-## Requirements
-
-- KDE Plasma 6.0 or newer (`metadata.json` declares `X-Plasma-API-Minimum-Version` 6.0)
-- Qt 6 with QML, Qt Quick, and Qt Quick Layouts
-- KDE Frameworks 6 with Kirigami
-- `kpackagetool6` for installation
-- Python 3 for the verification script
-
-## Verify
+## Verification and testing
 
 ```sh
 make verify
-```
-
-or directly:
-
-```sh
-python3 tests/verify_project.py
-```
-
-The verifier checks the package layout, metadata fields, the three sample windows, the expected percentage and reset labels, accessibility metadata, the use of system-styled Plasma controls, the absence of custom colors/surfaces/fonts, and README coverage of the sample data and API status. It does not require a running Plasma session.
-
-Optional QML syntax check:
-
-```sh
-/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml contents/ui/*.qml
-```
-
-The Qt 6 `qmllint` path varies by distribution. The verifier itself has no KDE dependency.
-
-Optional headless compact-activation test:
-
-```sh
 make test-ui
+/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml contents/ui/*.qml contents/config/*.qml tests/*.qml
 ```
 
-This runs `tests/tst_compact_activation.qml` with the Qt 6 QML test runner offscreen, with `QT_QPA_PLATFORMTHEME=kde` so the active KDE palette and Plasma controls resolve instead of a plain Qt fallback. It verifies that clicking, Space, and Return toggle the compact representation's `expanded` state. Override `QMLTESTRUNNER` if the runner is installed elsewhere.
+`make verify` checks package structure, the endpoint and response mapping, config entries, setup and error states, stock-control usage, and README coverage. `make test-ui` runs all `tests/tst_*.qml` files offscreen with the KDE platform theme. The QML tests cover normalized response mapping, ISO and numeric reset timestamps, missing and malformed fields, percent clamping, API/error messages, key gating, successful and failed responses, and demo-mode gating.
 
-## Build and install
+There is no live API test. Tests must not use a real key and must not contact the production endpoint. `qmllint` may report `missing-property` warnings for `Plasmoid.configuration.*`; those properties come from the KConfigXT file at runtime.
 
-There is no compilation step. Install the package directory with:
+## Current status and known limits
 
-```sh
-make install
-```
+- The endpoint and response shape are implemented from the current official documentation; availability and compatibility are not guaranteed by this project.
+- The API key is stored as plain local Plasma configuration, not in KWallet or another secret store. Password-style display only masks the field.
+- The widget polls only while it is loaded. It does not retain history, cache between sessions, or back off beyond the fixed polling interval.
+- If the endpoint returns additional windows, they are ignored. Only the three documented windows are displayed.
+- No response data or credentials are logged by the widget, but local configuration may still be readable by other processes running as the same user.
 
-which is equivalent to:
+## License
 
-```sh
-kpackagetool6 --type Plasma/Applet --install .
-```
-
-After editing an installed copy:
-
-```sh
-make upgrade
-```
-
-or:
-
-```sh
-kpackagetool6 --type Plasma/Applet --upgrade .
-```
-
-Remove it with:
-
-```sh
-make uninstall
-```
-
-or:
-
-```sh
-kpackagetool6 --type Plasma/Applet --remove org.opencode.usage
-```
-
-## Run
-
-1. Install or upgrade the package.
-2. Right-click the desktop or panel, enter edit mode, and choose **Add Widgets**.
-3. Search for **OpenCode Usage** and add it.
-
-On a desktop containment the full three-row layout is shown. In a panel the compact representation shows the highest usage percentage and three miniature progress bars. A shell restart is normally unnecessary; if the widget does not appear after an upgrade, restart Plasma explicitly for your session.
-
-There is no standalone executable. `plasmashell` hosts the QML package.
-
-## Assumed sample data
-
-The provider lives in `contents/ui/UsageProvider.qml` and is marked `isSampleData: true`. Sample values are encoded as percentages and reset durations in seconds, then formatted by the provider.
-
-| Title | `usedPercent` | `resetsInSeconds` | Badge | Reset label |
-| --- | ---: | ---: | --- | --- |
-| 5-hour window | 10 | 14820 | 10% used | Resets in 4h 7m |
-| Weekly | 4 | 133200 | 4% used | Resets in 1d 13h |
-| Monthly | 2 | 2588400 | 2% used | Resets in 29d 23h |
-
-The UI consumes only this normalized shape:
-
-```js
-{
-    windowId: "five_hour",      // stable identifier
-    label: "5-hour window",     // display title
-    usedPercent: 10,            // assumed 0..100 scale
-    resetsInSeconds: 14820      // relative time from now
-}
-```
-
-`UsageProvider.applyUsage(entries)` replaces the sample rows with an array of entries in that shape. `formatPercent`, `formatUsagePercent`, `formatReset`, `usageRatio`, and `summaryText` are the only formatting entry points used by the UI.
-
-## Unknown real API contract
-
-The real OpenCode Go API contract is unknown. This project intentionally makes no assumptions about:
-
-- the endpoint, HTTP method, or required headers
-- authentication or how credentials would be stored
-- the response envelope and field names
-- whether usage is a percentage (0-100), a fraction (0-1), or a raw count with a limit
-- whether resets are absolute timestamps or relative durations, and in which timezone
-- update cadence, caching, failure states, and rate limits
-
-Only the normalized provider shape above is assumed. When the API is confirmed, its response should be mapped into that shape and passed to `applyUsage()`; the presentation components should not need to change. Until then, the displayed values are sample data only.
-
-## Design notes
-
-- The widget is intentionally unstyled. It uses stock `PlasmaComponents3.Label`, `PlasmaComponents3.ProgressBar`, and `PlasmaComponents3.AbstractButton` controls, so the active Plasma style supplies the palette, fonts, and progress-bar artwork. The package does not override the applet background, draw its own card, or define colors, fonts, borders, radii, opacity, or bar drawing.
-- `Kirigami.Units` is used only for layout geometry: content margins, row spacing, the compact size, and the 17-grid-unit breakpoint that reflows the reset label.
-- Rows show title and percentage on the left with the reset label right-aligned on the same line when space allows. Below that breakpoint, the reset label reflows to its own right-aligned line above the progress bar, keeping the title and percentage visible at the supported 14-grid-unit minimum and at 256 px.
-- Usage rows are static content. Each row exposes a combined accessible name (`title, percentage, reset`), and its decorative labels and progress bar are hidden from assistive technology.
-- The compact panel representation is a focusable `PlasmaComponents3.AbstractButton`; clicking or activating it with the keyboard toggles the plasmoid's expanded full view. It retains an accessible button role, name, and the full usage summary as its description, while focus and hover behavior come from the system control.
-- The applet keeps the default Plasma background; it does not set `backgroundHints` or `NoBackground`.
+MIT

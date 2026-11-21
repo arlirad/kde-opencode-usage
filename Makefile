@@ -10,7 +10,7 @@ verify:
 	python3 tests/verify_project.py
 
 test-ui:
-	QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=kde $(QMLTESTRUNNER) -input tests/tst_compact_activation.qml
+	QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=kde $(QMLTESTRUNNER) -input tests
 
 install: verify
 	kpackagetool6 --type $(PACKAGE_TYPE) --install .

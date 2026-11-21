@@ -12,7 +12,19 @@ PlasmaComponents3.AbstractButton {
     required property var plasmoidItem
 
     readonly property int highlightedIndex: root.provider.highestUsageIndex()
-    readonly property var highlightedWindow: highlightedIndex >= 0 ? root.provider.windows.get(highlightedIndex) : null
+
+    readonly property string displayText: {
+        if (root.provider.state === "setup") {
+            return "Setup"
+        }
+        if (!root.provider.hasData) {
+            return root.provider.state === "loading" ? "…" : "—"
+        }
+        if (root.highlightedIndex < 0) {
+            return "—"
+        }
+        return root.provider.formatPercent(root.provider.windows.get(root.highlightedIndex).usedPercent)
+    }
 
     implicitWidth: Kirigami.Units.gridUnit * 3
     implicitHeight: Kirigami.Units.gridUnit * 2
@@ -48,7 +60,7 @@ PlasmaComponents3.AbstractButton {
 
         PlasmaComponents3.Label {
             Layout.fillWidth: true
-            text: root.highlightedWindow ? root.provider.formatPercent(root.highlightedWindow.usedPercent) : "—"
+            text: root.displayText
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
             Accessible.ignored: true
@@ -61,7 +73,7 @@ PlasmaComponents3.AbstractButton {
                 required property real usedPercent
 
                 Layout.fillWidth: true
-                value: root.provider.usageRatio(usedPercent)
+                value: root.provider.hasData ? root.provider.usageRatio(usedPercent) : 0
                 Accessible.ignored: true
             }
         }
