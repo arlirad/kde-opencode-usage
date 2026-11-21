@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents3
 
 Item {
     id: root
@@ -11,7 +12,6 @@ Item {
     property real ratio: 0
 
     readonly property real clampedRatio: Math.max(0, Math.min(1, ratio))
-    readonly property real topLineSpacing: Kirigami.Units.smallSpacing
     readonly property bool stackedLayout: width < Kirigami.Units.gridUnit * 17
 
     implicitWidth: Kirigami.Units.gridUnit * 14
@@ -24,29 +24,21 @@ Item {
         id: layout
 
         anchors.fill: parent
-        spacing: Math.max(2, Math.round(Kirigami.Units.smallSpacing * 0.5))
+        spacing: Kirigami.Units.smallSpacing
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: root.topLineSpacing
+            spacing: Kirigami.Units.smallSpacing
 
-            Text {
-                id: titleLabel
-
+            PlasmaComponents3.Label {
                 Layout.preferredWidth: implicitWidth
                 Layout.minimumWidth: 0
                 text: root.title
-                color: Kirigami.Theme.textColor
-                font: Kirigami.Theme.defaultFont
                 elide: Text.ElideRight
                 Accessible.ignored: true
             }
 
-            UsageBadge {
-                id: usageBadge
-
-                Layout.preferredWidth: implicitWidth
-                Layout.minimumWidth: implicitWidth
+            PlasmaComponents3.Label {
                 text: root.percentText
                 Accessible.ignored: true
             }
@@ -56,22 +48,27 @@ Item {
                 implicitWidth: 0
             }
 
-            UsageResetLabel {
+            PlasmaComponents3.Label {
                 visible: !root.stackedLayout
                 Layout.preferredWidth: implicitWidth
                 text: root.resetText
+                horizontalAlignment: Text.AlignRight
+                Accessible.ignored: true
             }
         }
 
-        UsageResetLabel {
+        PlasmaComponents3.Label {
             visible: root.stackedLayout
             Layout.fillWidth: true
             text: root.resetText
+            horizontalAlignment: Text.AlignRight
+            Accessible.ignored: true
         }
 
-        UsageBar {
+        PlasmaComponents3.ProgressBar {
             Layout.fillWidth: true
-            ratio: root.clampedRatio
+            value: root.clampedRatio
+            Accessible.ignored: true
         }
     }
 }

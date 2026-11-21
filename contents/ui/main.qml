@@ -9,8 +9,6 @@ PlasmoidItem {
 
     readonly property UsageProvider usageProvider: UsageProvider {}
 
-    Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
-
     preferredRepresentation: Plasmoid.formFactor === PlasmaCore.Types.Planar ? fullRepresentation : null
 
     compactRepresentation: CompactRepresentation {

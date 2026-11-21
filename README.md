@@ -1,6 +1,6 @@
 # OpenCode Usage
 
-A compact KDE Plasma 6 plasmoid that shows OpenCode Go usage for the 5-hour, weekly, and monthly windows. Each row contains a usage badge, a reset label, and a horizontal usage track. The widget uses only Qt 6 and KDE Plasma/QML modules.
+A compact KDE Plasma 6 plasmoid that shows OpenCode Go usage for the 5-hour, weekly, and monthly windows. Each row contains a usage percentage label, a reset label, and a system progress bar. The widget uses only Qt 6 and KDE Plasma/QML modules.
 
 The current data is a static sample. No network requests, credentials, timers, or OpenCode integration are implemented yet.
 
@@ -12,14 +12,9 @@ Makefile                            verify, install, upgrade, uninstall targets
 contents/ui/main.qml                PlasmoidItem entry point
 contents/ui/FullRepresentation.qml  desktop widget layout
 contents/ui/CompactRepresentation.qml panel layout
-contents/ui/UsageRow.qml            reusable label/badge/reset/track row
-contents/ui/UsageBar.qml            shared progress track and fill
-contents/ui/UsageBadge.qml          themed outlined percentage badge
-contents/ui/UsageResetLabel.qml     themed subordinate reset text
+contents/ui/UsageRow.qml            system-styled title/percent/reset/progress row
 contents/ui/UsageProvider.qml       isolated data provider and formatting
-contents/ui/UsagePalette.js         theme-derived contrast helpers for progress colors
-tests/verify_project.py             project, theme, and sample-label checks
-tests/contrast_probe.py             Breeze light/dark WCAG contrast checks
+tests/verify_project.py             project, sample-label, and system-style checks
 tests/tst_compact_activation.qml    headless compact click/keyboard activation test
 ```
 
@@ -43,7 +38,7 @@ or directly:
 python3 tests/verify_project.py
 ```
 
-The verifier checks the package layout, metadata fields, the three sample windows, the expected badge and reset labels, accessibility metadata, theme-derived color/font usage, and README coverage of the sample data and API status. It does not require a running Plasma session. `make verify` also runs a contrast probe against the installed Breeze Light and Breeze Dark color schemes, checking badge and reset text against WCAG AA (4.5:1), the unfilled track against the card, the fill against the unfilled track, and the compact focus ring, all against the 3:1 non-text target.
+The verifier checks the package layout, metadata fields, the three sample windows, the expected percentage and reset labels, accessibility metadata, the use of system-styled Plasma controls, the absence of custom colors/surfaces/fonts, and README coverage of the sample data and API status. It does not require a running Plasma session.
 
 Optional QML syntax check:
 
@@ -59,7 +54,7 @@ Optional headless compact-activation test:
 make test-ui
 ```
 
-This runs `tests/tst_compact_activation.qml` with the Qt 6 QML test runner under Xvfb, with `QT_QPA_PLATFORMTHEME=kde` so `Kirigami.Theme` resolves the actual KDE palette rather than a plain Qt fallback. It verifies that clicking, Space, and Return toggle the compact representation's `expanded` state, and that the focus ring has at least 3:1 contrast against the button background. Override `QMLTESTRUNNER` if the runner is installed elsewhere.
+This runs `tests/tst_compact_activation.qml` with the Qt 6 QML test runner offscreen, with `QT_QPA_PLATFORMTHEME=kde` so the active KDE palette and Plasma controls resolve instead of a plain Qt fallback. It verifies that clicking, Space, and Return toggle the compact representation's `expanded` state. Override `QMLTESTRUNNER` if the runner is installed elsewhere.
 
 ## Build and install
 
@@ -105,7 +100,7 @@ kpackagetool6 --type Plasma/Applet --remove org.opencode.usage
 2. Right-click the desktop or panel, enter edit mode, and choose **Add Widgets**.
 3. Search for **OpenCode Usage** and add it.
 
-On a desktop containment the full three-row card is shown. In a panel the compact representation shows the highest usage percentage and three miniature tracks. A shell restart is normally unnecessary; if the widget does not appear, restart Plasma explicitly for your session.
+On a desktop containment the full three-row layout is shown. In a panel the compact representation shows the highest usage percentage and three miniature progress bars. A shell restart is normally unnecessary; if the widget does not appear after an upgrade, restart Plasma explicitly for your session.
 
 There is no standalone executable. `plasmashell` hosts the QML package.
 
@@ -147,9 +142,9 @@ Only the normalized provider shape above is assumed. When the API is confirmed, 
 
 ## Design notes
 
-- Colors and fonts come from `Kirigami.Theme` so the widget follows the active KDE/Plasma theme. The card uses `backgroundColor`; badge and reset text use readable `textColor`. Both full rows and compact mini-bars share `UsageBar.qml`: its unfilled track is the lightest theme-text blend over the card that still reaches 3:1, while its fill is the theme highlight accent, darkened or lightened only as far as needed to reach 3:1 against that track. In Breeze Light this yields a deep blue fill; in Breeze Dark a light blue fill. The semantic `positiveTextColor` remains as the decorative badge outline. There is no custom color palette or branding palette.
-- Fonts use the theme's `defaultFont` and `smallFont` without forced families, sizes, or weights. Sizes use `Kirigami.Units` so the widget follows display scaling.
-- Rows show title and badge together on the left with the reset label right-aligned on the same line when space allows. Below that breakpoint, the reset label reflows to its own right-aligned line above the track, keeping the title and badge visible at the supported 14-grid-unit minimum and at 256 px.
-- Usage rows are static content. Each row exposes a combined accessible name (`title, badge, reset`), and decorative children are hidden from assistive technology.
-- The compact panel representation is a focusable Plasma `AbstractButton`; clicking or activating it with the keyboard toggles the plasmoid's expanded full view. It retains an accessible button role, name, and the full usage summary as its description. The focus ring uses 2 px of readable `textColor` rather than the lower-contrast focus color.
-- The widget sets `PlasmaCore.Types.NoBackground` because it draws its own card background from theme colors.
+- The widget is intentionally unstyled. It uses stock `PlasmaComponents3.Label`, `PlasmaComponents3.ProgressBar`, and `PlasmaComponents3.AbstractButton` controls, so the active Plasma style supplies the palette, fonts, and progress-bar artwork. The package does not override the applet background, draw its own card, or define colors, fonts, borders, radii, opacity, or bar drawing.
+- `Kirigami.Units` is used only for layout geometry: content margins, row spacing, the compact size, and the 17-grid-unit breakpoint that reflows the reset label.
+- Rows show title and percentage on the left with the reset label right-aligned on the same line when space allows. Below that breakpoint, the reset label reflows to its own right-aligned line above the progress bar, keeping the title and percentage visible at the supported 14-grid-unit minimum and at 256 px.
+- Usage rows are static content. Each row exposes a combined accessible name (`title, percentage, reset`), and its decorative labels and progress bar are hidden from assistive technology.
+- The compact panel representation is a focusable `PlasmaComponents3.AbstractButton`; clicking or activating it with the keyboard toggles the plasmoid's expanded full view. It retains an accessible button role, name, and the full usage summary as its description, while focus and hover behavior come from the system control.
+- The applet keeps the default Plasma background; it does not set `backgroundHints` or `NoBackground`.

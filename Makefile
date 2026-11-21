@@ -8,10 +8,9 @@ all: verify
 
 verify:
 	python3 tests/verify_project.py
-	python3 tests/contrast_probe.py
 
 test-ui:
-	QT_QPA_PLATFORMTHEME=kde xvfb-run -a $(QMLTESTRUNNER) -input tests/tst_compact_activation.qml
+	QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME=kde $(QMLTESTRUNNER) -input tests/tst_compact_activation.qml
 
 install: verify
 	kpackagetool6 --type $(PACKAGE_TYPE) --install .
