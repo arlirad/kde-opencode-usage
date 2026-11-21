@@ -17,6 +17,7 @@ REQUIRED_FILES = [
     "contents/ui/UsageBadge.qml",
     "contents/ui/UsageResetLabel.qml",
     "contents/ui/UsageProvider.qml",
+    "contents/ui/UsagePalette.js",
     "tests/tst_compact_activation.qml",
     "tests/contrast_probe.py",
 ]
@@ -36,6 +37,7 @@ CHECKED_FILES = [
     "contents/ui/UsageBadge.qml",
     "contents/ui/UsageResetLabel.qml",
     "contents/ui/UsageProvider.qml",
+    "contents/ui/UsagePalette.js",
 ]
 
 
@@ -115,6 +117,7 @@ def main():
 
     qml_text = "\n".join((ROOT / path).read_text(encoding="utf-8") for path in CHECKED_FILES if (ROOT / path).is_file())
     usage_row_text = (ROOT / "contents/ui/UsageRow.qml").read_text(encoding="utf-8")
+    full_text = (ROOT / "contents/ui/FullRepresentation.qml").read_text(encoding="utf-8")
     compact_text = (ROOT / "contents/ui/CompactRepresentation.qml").read_text(encoding="utf-8")
     badge_text = (ROOT / "contents/ui/UsageBadge.qml").read_text(encoding="utf-8")
     bar_text = (ROOT / "contents/ui/UsageBar.qml").read_text(encoding="utf-8")
@@ -132,8 +135,11 @@ def main():
     checks.append(("UI has no hard-coded hex colors", not re.search(r"#[0-9a-fA-F]{6}\b", qml_text), ""))
     checks.append(("UI does not force font families or sizes", not any(token in qml_text for token in ("font.family", "font.pointSize", "font.pixelSize", "font.weight")), ""))
     checks.append(("row reflows its reset label at compact widths", "stackedLayout: width <" in usage_row_text and "UsageResetLabel" in usage_row_text, ""))
+    checks.append(("full card height derives from content plus compact padding", "implicitHeight: content.implicitHeight + root.padding * 2" in full_text, ""))
+    checks.append(("full card uses tighter derived row spacing", "rowSpacing: Math.round(Kirigami.Units.smallSpacing * 1.5)" in full_text, ""))
     checks.append(("full and compact rows share one progress bar", "UsageBar" in usage_row_text and "UsageBar" in compact_text, ""))
-    checks.append(("progress bar uses theme text for track and fill", "Qt.rgba(Kirigami.Theme.textColor" in bar_text and "color: Kirigami.Theme.textColor" in bar_text, ""))
+    checks.append(("progress track derives from theme background and text", "UsagePalette.trackColor(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor)" in bar_text, ""))
+    checks.append(("progress fill uses a readable theme accent", "UsagePalette.readableAccent(Kirigami.Theme.highlightColor" in bar_text, ""))
     checks.append(("badge text uses readable theme text", "color: Kirigami.Theme.textColor" in badge_text, ""))
     checks.append(("badge accent is retained as an outline", "border.color: Kirigami.Theme.positiveTextColor" in badge_text, ""))
     checks.append(("reset label uses readable theme text", "color: Kirigami.Theme.textColor" in reset_label_text and "opacity: 0.72" in reset_label_text and "disabledTextColor" not in reset_label_text, ""))

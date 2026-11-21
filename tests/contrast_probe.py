@@ -35,11 +35,13 @@ def read_colors(path):
     parser = configparser.ConfigParser()
     parser.read(path, encoding="utf-8")
     section = parser["Colors:Window"]
+    selection = parser["Colors:Selection"]
     return {
         "background": tuple(int(value) for value in section["BackgroundNormal"].split(",")),
         "text": tuple(int(value) for value in section["ForegroundNormal"].split(",")),
         "positive": tuple(int(value) for value in section["ForegroundPositive"].split(",")),
         "focus": tuple(int(value) for value in section["DecorationFocus"].split(",")),
+        "highlight": tuple(int(value) for value in selection["BackgroundNormal"].split(",")),
     }
 
 
@@ -60,17 +62,51 @@ def contrast(first, second):
 
 
 def blend(background, foreground, alpha):
-    return tuple(round(background[index] + alpha * (foreground[index] - background[index])) for index in range(3))
+    return tuple(background[index] + alpha * (foreground[index] - background[index]) for index in range(3))
 
 
-def progress_colors():
-    source = (ROOT / "contents/ui/UsageBar.qml").read_text(encoding="utf-8")
-    match = re.search(r"Kirigami\.Theme\.textColor\.b,\s*([0-9]*\.?[0-9]+)\)", source)
-    if match is None:
-        raise ValueError("track alpha is not defined as a textColor-based Qt.rgba color")
-    if "color: Kirigami.Theme.textColor" not in source:
-        raise ValueError("progress fill is not defined from theme text color")
-    return float(match.group(1))
+def palette_parameters():
+    source = (ROOT / "contents/ui/UsagePalette.js").read_text(encoding="utf-8")
+    bar = (ROOT / "contents/ui/UsageBar.qml").read_text(encoding="utf-8")
+    if "UsagePalette.trackColor(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor)" not in bar:
+        raise ValueError("track is not derived from theme background and text colors")
+    if "UsagePalette.readableAccent(Kirigami.Theme.highlightColor" not in bar:
+        raise ValueError("fill is not derived from the theme highlight color")
+    values = {}
+    for name in ("TARGET_CONTRAST", "MIN_TRACK_ALPHA", "MAX_TRACK_ALPHA", "ALPHA_STEP", "MIX_STEP"):
+        match = re.search(rf"{name}\s*=\s*([0-9]*\.?[0-9]+)", source)
+        if match is None:
+            raise ValueError(f"palette constant {name} is not defined")
+        values[name] = float(match.group(1))
+    return values
+
+
+def track_color(background, foreground, parameters):
+    track = foreground
+    alpha = parameters["MIN_TRACK_ALPHA"]
+    while alpha <= parameters["MAX_TRACK_ALPHA"]:
+        track = blend(background, foreground, alpha)
+        if contrast(track, background) >= parameters["TARGET_CONTRAST"]:
+            return track
+        alpha += parameters["ALPHA_STEP"]
+    return track
+
+
+def readable_accent(accent, track, fallback, parameters):
+    if contrast(accent, track) >= parameters["TARGET_CONTRAST"]:
+        return accent
+    black = (0, 0, 0)
+    white = (255, 255, 255)
+    amount = parameters["MIX_STEP"]
+    while amount <= 1:
+        darker = blend(accent, black, amount)
+        if contrast(darker, track) >= parameters["TARGET_CONTRAST"]:
+            return darker
+        lighter = blend(accent, white, amount)
+        if contrast(lighter, track) >= parameters["TARGET_CONTRAST"]:
+            return lighter
+        amount += parameters["MIX_STEP"]
+    return fallback
 
 
 def focus_ring_color():
@@ -85,7 +121,7 @@ def focus_ring_color():
 
 
 def main():
-    alpha = progress_colors()
+    parameters = palette_parameters()
     focus_key = focus_ring_color()
     failures = []
     available = 0
@@ -97,14 +133,17 @@ def main():
         available += 1
         colors = read_colors(path)
         badge_ratio = contrast(colors["background"], colors["text"])
-        track_color = blend(colors["background"], colors["text"], alpha)
-        track_ratio = contrast(colors["background"], track_color)
-        fill_ratio = contrast(track_color, colors["text"])
+        track = track_color(colors["background"], colors["text"], parameters)
+        track_ratio = contrast(colors["background"], track)
+        fill = readable_accent(colors["highlight"], track, colors["text"], parameters)
+        fill_ratio = contrast(track, fill)
+        reset_ratio = contrast(colors["background"], blend(colors["background"], colors["text"], 0.72))
         accent_ratio = contrast(colors["background"], colors["positive"])
         focus_ratio = contrast(colors["background"], colors[focus_key])
 
         print(
             f"{theme}: badge text {badge_ratio:.2f}:1 (AA >= {AA_TEXT}), "
+            f"reset text {reset_ratio:.2f}:1 (AA >= {AA_TEXT}), "
             f"track-vs-bg {track_ratio:.2f}:1 (non-text >= {AA_NON_TEXT}), "
             f"fill-vs-track {fill_ratio:.2f}:1 (non-text >= {AA_NON_TEXT}), "
             f"focus ring {focus_ratio:.2f}:1 (non-text >= {AA_NON_TEXT}), "
@@ -112,6 +151,8 @@ def main():
         )
         if badge_ratio < AA_TEXT:
             failures.append(f"{theme}: badge text contrast {badge_ratio:.2f}:1")
+        if reset_ratio < AA_TEXT:
+            failures.append(f"{theme}: reset text contrast {reset_ratio:.2f}:1")
         if track_ratio < AA_NON_TEXT:
             failures.append(f"{theme}: track contrast {track_ratio:.2f}:1")
         if fill_ratio < AA_NON_TEXT:
@@ -129,7 +170,7 @@ def main():
         print(f"FAILED: {len(failures)} contrast checks failed")
         return 1
 
-    print(f"OK: contrast checks passed for {available} theme(s) at track alpha {alpha:.2f}")
+    print(f"OK: contrast checks passed for {available} theme(s)")
     return 0
 
 

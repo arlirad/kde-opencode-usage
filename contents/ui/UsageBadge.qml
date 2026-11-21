@@ -6,8 +6,8 @@ Rectangle {
 
     property string text: ""
 
-    implicitWidth: label.implicitWidth + Kirigami.Units.smallSpacing * 2
-    implicitHeight: label.implicitHeight + Math.round(Kirigami.Units.smallSpacing * 0.8)
+    implicitWidth: label.implicitWidth + Kirigami.Units.smallSpacing * 1.5
+    implicitHeight: label.implicitHeight + Math.max(1, Math.round(Kirigami.Units.smallSpacing * 0.4))
     radius: height / 2
     color: "transparent"
     border.width: 1

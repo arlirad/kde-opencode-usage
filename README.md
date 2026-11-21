@@ -17,6 +17,7 @@ contents/ui/UsageBar.qml            shared progress track and fill
 contents/ui/UsageBadge.qml          themed outlined percentage badge
 contents/ui/UsageResetLabel.qml     themed subordinate reset text
 contents/ui/UsageProvider.qml       isolated data provider and formatting
+contents/ui/UsagePalette.js         theme-derived contrast helpers for progress colors
 tests/verify_project.py             project, theme, and sample-label checks
 tests/contrast_probe.py             Breeze light/dark WCAG contrast checks
 tests/tst_compact_activation.qml    headless compact click/keyboard activation test
@@ -42,7 +43,7 @@ or directly:
 python3 tests/verify_project.py
 ```
 
-The verifier checks the package layout, metadata fields, the three sample windows, the expected badge and reset labels, accessibility metadata, theme-derived color/font usage, and README coverage of the sample data and API status. It does not require a running Plasma session. `make verify` also runs a contrast probe against the installed Breeze Light and Breeze Dark color schemes, checking badge text against WCAG AA (4.5:1), the unfilled track against the card, the fill against the unfilled track, and the compact focus ring, all against the 3:1 non-text target.
+The verifier checks the package layout, metadata fields, the three sample windows, the expected badge and reset labels, accessibility metadata, theme-derived color/font usage, and README coverage of the sample data and API status. It does not require a running Plasma session. `make verify` also runs a contrast probe against the installed Breeze Light and Breeze Dark color schemes, checking badge and reset text against WCAG AA (4.5:1), the unfilled track against the card, the fill against the unfilled track, and the compact focus ring, all against the 3:1 non-text target.
 
 Optional QML syntax check:
 
@@ -146,7 +147,7 @@ Only the normalized provider shape above is assumed. When the API is confirmed, 
 
 ## Design notes
 
-- Colors and fonts come from `Kirigami.Theme` so the widget follows the active KDE/Plasma theme. The card uses `backgroundColor`; badge and reset text use readable `textColor`. Both full rows and compact mini-bars share `UsageBar.qml`: its unfilled track derives from `textColor` at 51% opacity, while its fill is opaque `textColor`, giving at least 3:1 for track-vs-card and fill-vs-track in Breeze Light and Breeze Dark. The semantic `positiveTextColor` remains as the decorative badge outline. There is no custom color palette or branding palette.
+- Colors and fonts come from `Kirigami.Theme` so the widget follows the active KDE/Plasma theme. The card uses `backgroundColor`; badge and reset text use readable `textColor`. Both full rows and compact mini-bars share `UsageBar.qml`: its unfilled track is the lightest theme-text blend over the card that still reaches 3:1, while its fill is the theme highlight accent, darkened or lightened only as far as needed to reach 3:1 against that track. In Breeze Light this yields a deep blue fill; in Breeze Dark a light blue fill. The semantic `positiveTextColor` remains as the decorative badge outline. There is no custom color palette or branding palette.
 - Fonts use the theme's `defaultFont` and `smallFont` without forced families, sizes, or weights. Sizes use `Kirigami.Units` so the widget follows display scaling.
 - Rows show title and badge together on the left with the reset label right-aligned on the same line when space allows. Below that breakpoint, the reset label reflows to its own right-aligned line above the track, keeping the title and badge visible at the supported 14-grid-unit minimum and at 256 px.
 - Usage rows are static content. Each row exposes a combined accessible name (`title, badge, reset`), and decorative children are hidden from assistive technology.

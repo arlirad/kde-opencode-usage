@@ -1,5 +1,6 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
+import "UsagePalette.js" as UsagePalette
 
 Item {
     id: root
@@ -7,6 +8,8 @@ Item {
     property real ratio: 0
 
     readonly property real clampedRatio: Math.max(0, Math.min(1, ratio))
+    readonly property color trackColor: UsagePalette.trackColor(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor)
+    readonly property color fillColor: UsagePalette.readableAccent(Kirigami.Theme.highlightColor, root.trackColor, Kirigami.Theme.textColor)
 
     implicitHeight: Math.max(4, Math.round(Kirigami.Units.smallSpacing * 0.6))
     Accessible.ignored: true
@@ -14,13 +17,13 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: height / 2
-        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.51)
+        color: root.trackColor
     }
 
     Rectangle {
         width: root.clampedRatio > 0 ? Math.max(parent.height, parent.width * root.clampedRatio) : 0
         height: parent.height
         radius: height / 2
-        color: Kirigami.Theme.textColor
+        color: root.fillColor
     }
 }

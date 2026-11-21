@@ -9,8 +9,11 @@ Item {
 
     required property UsageProvider provider
 
+    readonly property int padding: Kirigami.Units.largeSpacing
+    readonly property int rowSpacing: Math.round(Kirigami.Units.smallSpacing * 1.5)
+
     implicitWidth: Kirigami.Units.gridUnit * 20
-    implicitHeight: content.implicitHeight + Kirigami.Units.largeSpacing * 2
+    implicitHeight: content.implicitHeight + root.padding * 2
     Layout.minimumWidth: Kirigami.Units.gridUnit * 14
     Layout.minimumHeight: implicitHeight
     Layout.preferredWidth: implicitWidth
@@ -18,7 +21,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Math.round(Kirigami.Units.gridUnit * 0.55)
+        radius: Math.round(Kirigami.Units.gridUnit * 0.5)
         color: Kirigami.Theme.backgroundColor
         border.width: 1
         border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.2)
@@ -28,8 +31,8 @@ Item {
         id: content
 
         anchors.fill: parent
-        anchors.margins: Kirigami.Units.largeSpacing
-        spacing: Kirigami.Units.largeSpacing
+        anchors.margins: root.padding
+        spacing: root.rowSpacing
 
         Repeater {
             model: root.provider.windows

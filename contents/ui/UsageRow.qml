@@ -24,7 +24,7 @@ Item {
         id: layout
 
         anchors.fill: parent
-        spacing: Math.round(Kirigami.Units.smallSpacing * 0.6)
+        spacing: Math.max(2, Math.round(Kirigami.Units.smallSpacing * 0.5))
 
         RowLayout {
             Layout.fillWidth: true
